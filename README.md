@@ -9,7 +9,7 @@ SAS
    Tools: SAS Enterprise Guide / Base SAS
    ===================================================================== */
 
-/* 1. Criar um conjunto de dados simulado de empréstimos bancários */
+/* 1. Create a simulated bank loan dataset */
 data work.raw_loans;
     input CustomerID $ CreditScore Balance Limit TotalDebt;
     datalines;
@@ -22,21 +22,21 @@ CUST006 610 30000 35000 20000
 ;
 run;
 
-/* 2. Engenharia de Recursos (Feature Engineering) e Regras de Risco */
+/* 2. Feature Engineering & Risk Rules Application */
 data work.credit_risk_prepared;
     set work.raw_loans;
     
-    /* Cálculo da Utilização do Limite de Crédito */
+    /* Calculate Credit Limit Utilization Rate */
     if Limit > 0 then CreditUtilization = Balance / Limit;
     else CreditUtilization = 0;
     
-    /* Categorização por Faixa de Score de Crédito */
+    /* Categorize Customers into Risk Bands based on Credit Score */
     if CreditScore >= 750 then RiskBand = '1 - Low Risk';
     else if CreditScore >= 650 then RiskBand = '2 - Medium-Low Risk';
     else if CreditScore >= 550 then RiskBand = '3 - Medium-High Risk';
     else RiskBand = '4 - High Risk (Watchlist)';
 
-    /* Atribuição Estimada de PD (Probability of Default) com base na faixa */
+    /* Assign Estimated Probability of Default (PD) per Risk Band */
     select (RiskBand);
         when ('1 - Low Risk')              Estimated_PD = 0.01;
         when ('2 - Medium-Low Risk')       Estimated_PD = 0.03;
@@ -45,7 +45,7 @@ data work.credit_risk_prepared;
         otherwise Estimated_PD = .;
     end;
 
-    /* Cálculo da Exposição no Momento do Default (EAD) */
+    /* Calculate Exposure at Default (EAD) */
     EAD = Balance + (TotalDebt * 0.50);
 
     format CreditUtilization percent8.2 
@@ -53,14 +53,14 @@ data work.credit_risk_prepared;
            Balance Limit TotalDebt EAD dollar12.2;
 run;
 
-/* 3. Agregação e Relatório Sumarizado por Categoria de Risco */
+/* 3. Aggregation and Summarized Portfolio Risk Report */
 proc means data=work.credit_risk_prepared n mean sum maxdec=2;
     class RiskBand;
     var Balance EAD Estimated_PD CreditUtilization;
     title "Summary of Credit Risk Portfolio by Risk Band";
 run;
 
-/* 4. Filtrar clientes de Alto Risco para o time de Compliance / Monitoramento */
+/* 4. Filter High-Risk Accounts for Compliance and Monitoring */
 proc sql;
     create table work.high_risk_watchlist as
     select 
@@ -75,5 +75,5 @@ proc sql;
     order by Balance desc;
 quit;
 
-/* Limpeza de títulos */
+/* Clear report titles */
 title;
